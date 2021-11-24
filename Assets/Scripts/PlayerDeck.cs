@@ -6,16 +6,22 @@ using System.Threading.Tasks;
 
 public class PlayerDeck
 {
-    private int _id = 0;
-
-    private Card _identity = null;
-
+    private List<Card> _commonCards = null;
     private List<Card> _specialCards = null;
     private int _specialCardsRemain = 0;
 
+    public Card Identity
+    {
+        private set;
+
+        get;
+    }
+
     public PlayerDeck(Card id, int playerCount)
     {
-        _identity = id;
+        Identity = id;
+
+        _commonCards = new List<Card>();
 
         _specialCards = new List<Card>();
 

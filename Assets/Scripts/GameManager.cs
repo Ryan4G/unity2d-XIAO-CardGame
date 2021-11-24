@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -36,6 +37,12 @@ public class GameManager : Singleton<GameManager>
     // UI
 
     private PlayerDeck _currentPlayer = null;
+
+    public GameObject cardPrefab;
+
+    private GameObject[] _identityCards;
+
+    private bool _identityChoose = false;
 
     private void ShowUI(GameObject newUI)
     {
@@ -103,27 +110,51 @@ public class GameManager : Singleton<GameManager>
         Deck.AddSpecialCards(memberCount, "~~~~", "本回合玩家只能出防御牌", "额外放置1张防御牌", "B");
         Deck.AddSpecialCards(memberCount, "笨女人 ", "本回合玩家只能出1张牌", "抽取2张通用牌", "C");
 
-        var idCard = Deck.GetRandomCard(Card.IdentityType.MINE);
-        _currentPlayer = new PlayerDeck(idCard, memberCount);
+        // init global deck
+        for(var i = 0; i < memberCount; i++)
+        {
+            var idCard = Deck.GetRandomCard(Card.IdentityType.MINE);
+            globalDeck.Add(idCard.cardTypeDesc, new PlayerDeck(idCard, memberCount));
+        }
+
+        _identityCards = new GameObject[memberCount];
+
+        PickIdentityCards();
     }
 
     public void OnPickCard()
     {
+        if (!_identityChoose)
+        {
+            return;
+        }
+
         var card = Deck.GetRandomCard(0);
 
         if (card != null)
         {
-            DisplayOnBoard($"Card Info: {card.identity} {card.title} {card.effect01} {card.effect02}");
+            DisplayOnBoard($"{_currentPlayer.Identity.title}抽取了一张卡牌");
+            DisplayOnBoard($"卡牌信息： {card.identity} {card.title} {card.effect01} {card.effect02}");
         }
     }
 
     public void OnXIAOCard()
     {
+        if (!_identityChoose)
+        {
+            return;
+        }
+
         DisplayOnBoard("OnXIAOCard");
     }
 
     public void OnDiscard()
     {
+        if (!_identityChoose)
+        {
+            return;
+        }
+
         DisplayOnBoard("OnDiscard");
     }
 
@@ -170,7 +201,15 @@ public class GameManager : Singleton<GameManager>
     {
         deckRemainText.text = $"Deck Remain:{Deck.GetDeckCount()}";
         sceneStateText.text = $"Scene State:{_sceneState}";
-        mineRemainText.text = $"MINE Remain:{_currentPlayer.GetMINERemain()}";
+
+        if (_identityChoose)
+        {
+            mineRemainText.text = $"MINE Remain:{_currentPlayer.GetMINERemain()}";
+        }
+        else
+        {
+            mineRemainText.text = $"MINE Remain: None";
+        }
     }
 
     private void DisplayOnBoard(string msg)
@@ -186,13 +225,67 @@ public class GameManager : Singleton<GameManager>
 
         tmp.GetComponent<Text>().text = $"{msg}\n";
 
-        StartCoroutine(DelayScroll());
+        StartCoroutine(DelayAction(0.2f, () => {
+            scrollBoard.verticalNormalizedPosition = 0f;
+        }));
     }
 
-    private IEnumerator DelayScroll()
+    private IEnumerator DelayAction(float delay, Action action)
     {
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(delay);
 
-        scrollBoard.verticalNormalizedPosition = 0f;
+        action.Invoke();
+    }
+
+    private void PickIdentityCards()
+    {
+        DisplayOnBoard("请玩家选择一张身份牌");
+
+        var index = 0;
+
+        foreach(var playerDeck in globalDeck.Values)
+        {
+            var v3 = cardPrefab.transform.position;
+            v3.x = index * 5 + -5;
+
+            var go = Instantiate(cardPrefab, v3, cardPrefab.transform.rotation);
+            var xiaoCard = go.GetComponent<XIAOCard>();
+            xiaoCard.SetCard(playerDeck.Identity);
+            xiaoCard.OnClick += this.ChooseCard;
+
+            _identityCards[index] = go;
+
+            index++;
+        }
+    }
+
+    private void ChooseCard(Card card)
+    {
+        if (!_identityChoose)
+        {
+            foreach (GameObject go in _identityCards)
+            {
+                var xiaoCard = go.GetComponent<XIAOCard>();
+
+                if (xiaoCard.Card == card)
+                {
+                    _currentPlayer = globalDeck[card.cardTypeDesc];
+                    _identityChoose = true;
+                    break;
+                }
+            }
+
+            if (_identityChoose)
+            {
+                StartCoroutine(DelayAction(3.0f, () => {
+                    for (int i = _identityCards.Length - 1; i >= 0; i--)
+                    {
+                        Destroy(_identityCards[i]);
+                    }
+                }));
+
+                DisplayOnBoard($"您的身份是：{_currentPlayer.Identity.title}");
+            }
+        }
     }
 }
