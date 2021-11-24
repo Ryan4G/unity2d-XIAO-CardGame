@@ -8,6 +8,11 @@ public class XIAOCard : MonoBehaviour
 
     public bool cardHide = true;
 
+    public TextMesh descText;
+    public TextMesh titleText;
+    public TextMesh effect01Text;
+    public TextMesh effect02Text;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -23,5 +28,13 @@ public class XIAOCard : MonoBehaviour
     public void OnMouseDown()
     {
         cardBack.SetActive(false);
+    }
+
+    public void SetCard(Card card)
+    {
+        descText.text = card.cardTypeDesc;
+        titleText.text = card.title;
+        effect01Text.text = card.effect01;
+        effect02Text.text = card.effect02;
     }
 }

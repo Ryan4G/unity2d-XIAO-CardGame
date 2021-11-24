@@ -42,12 +42,12 @@ public class Deck
         {
             _cardDeck.Add(new Card
             {
-                Identity = id,
+                identity = id,
                 cardType = ct,
                 cardTypeDesc = cardDesc,
-                Title = t,
-                Effect0 = e,
-                Effect1 = e1
+                title = t,
+                effect01 = e,
+                effect02 = e1
             });
         }
     }
@@ -56,11 +56,11 @@ public class Deck
     {
         if (ct != Card.CardType.None)
         {
-            return _cardDeck.Where(t => t.Identity == id && t.cardType == ct).Count();
+            return _cardDeck.Where(t => t.identity == id && t.cardType == ct).Count();
         }
         else
         {
-            return _cardDeck.Where(t => t.Identity == id).Count();
+            return _cardDeck.Where(t => t.identity == id).Count();
         }
     }
 
@@ -70,11 +70,11 @@ public class Deck
         
         if (ct != Card.CardType.None)
         {
-            idCards = _cardDeck.Where(t => t.Identity == id && t.cardType == ct).ToList();
+            idCards = _cardDeck.Where(t => t.identity == id && t.cardType == ct).ToList();
         }
         else
         {
-            idCards = _cardDeck.Where(t => t.Identity == id).ToList();
+            idCards = _cardDeck.Where(t => t.identity == id).ToList();
         }
 
         if (idCards.Count < 1)

@@ -113,7 +113,7 @@ public class GameManager : Singleton<GameManager>
 
         if (card != null)
         {
-            DisplayOnBoard($"Card Info: {card.Identity} {card.Title} {card.Effect0} {card.Effect1}");
+            DisplayOnBoard($"Card Info: {card.identity} {card.title} {card.effect01} {card.effect02}");
         }
     }
 
