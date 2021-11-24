@@ -1,0 +1,198 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class GameManager : Singleton<GameManager>
+{
+    public GameObject titleUI;
+    public GameObject pausedUI;
+    public GameObject gameOverUI;
+    public GameObject mainUI;
+    public GameObject initUI;
+
+    public Text memberText;
+
+    public ScrollRect scrollBoard;
+
+    public Text boardText;
+
+    public Text deckRemainText;
+    public Text sceneStateText;
+    public Text mineRemainText;
+
+    public bool gameIsPlaying
+    {
+        get;
+        private set;
+    }
+
+
+    public bool paused;
+
+    private string _sceneState = "None";
+
+    private Dictionary<string, PlayerDeck> globalDeck = new Dictionary<string, PlayerDeck>();
+    // UI
+
+    private PlayerDeck _currentPlayer = null;
+
+    private void ShowUI(GameObject newUI)
+    {
+        GameObject[] allUI = { titleUI, pausedUI, gameOverUI, mainUI, initUI};
+
+        foreach (var go in allUI)
+        {
+            go.SetActive(false);
+        }
+
+        newUI.SetActive(true);
+    }
+
+    public void InitDeck(int memberCount)
+    {
+        globalDeck.Clear();
+
+        Deck.EmptyDeck();
+
+        // Common Cards
+        Deck.AddCommonCards(1, "欢迎新人", "指定一名玩家进行自我介绍，弃掉1张手牌", null, Card.CardType.Attack, "01");
+        Deck.AddCommonCards(1, "原画复盘", "指定一名玩家进行作品分享，弃掉1张手牌", null, Card.CardType.Attack, "02");
+        Deck.AddCommonCards(1, "画不完了", "让一名玩家画不完项目，弃掉2张手牌", null, Card.CardType.Attack, "03");
+        Deck.AddCommonCards(1, "填写绩效", "让一名玩家填写绩效表，弃掉2张手牌", null, Card.CardType.Attack, "04");
+        Deck.AddCommonCards(1, "周六加班", "指定一名玩家周六加班，弃掉3张手牌", null, Card.CardType.Attack, "05");
+        Deck.AddCommonCards(1, "部门加班", "今天全组加班！其他玩家弃掉所有手牌", null, Card.CardType.Attack, "06");
+        Deck.AddCommonCards(1, "坏女人罪", "指定一名玩家成为坏女人，弃掉所有专属牌", null, Card.CardType.Attack, "07");
+        Deck.AddCommonCards(1, "中转崩溃", "中转又双叒叕崩溃了，其他玩家强制弃掉2张专属牌", null, Card.CardType.Attack, "08");
+        Deck.AddCommonCards(1, "群内禁言", "我以HR的名义禁止所有人发言，指定玩家停止行动一回合", null, Card.CardType.Attack, "09");
+        Deck.AddCommonCards(1, "部门搬迁", "准备搬家我们要换地方了，清除当前场景", null, Card.CardType.Attack, "10");
+
+        Deck.AddCommonCards(1, "申请签卡", "今天迟到了但我能签卡嘿嘿，抽取2张通用牌", null, Card.CardType.Defend, "01");
+        Deck.AddCommonCards(1, "去取奶茶", "奶茶到了，我去拿！抽取2张通用牌", null, Card.CardType.Defend, "02");
+        Deck.AddCommonCards(1, "食堂午饭", "终于等到午饭了，抽取1张专属牌", null, Card.CardType.Defend, "03");
+        Deck.AddCommonCards(1, "吃下午茶", "不要抢每个人都有，所有玩家抽取1张专属牌", null, Card.CardType.Defend, "04");
+        Deck.AddCommonCards(1, "准点下班", "五十九分了我得走了，抽取3张通用牌", null, Card.CardType.Defend, "05");
+        Deck.AddCommonCards(1, "得开会了", "大伙们该开会去了，所有玩家抽取1张通用牌", null, Card.CardType.Defend, "06");
+        Deck.AddCommonCards(1, "我不会画", "我摊牌了我开摆了，抽取4张通用牌后选择其中1张弃掉", null, Card.CardType.Defend, "07");
+        Deck.AddCommonCards(1, "电脑蓝屏", "电脑蓝了我也没办法，弃掉手中的通用牌后抽取相同数量的通用牌", null, Card.CardType.Defend, "08");
+        Deck.AddCommonCards(1, "今天调休", "不好意思我今天调休了！本回合内无法受到攻击牌攻击", null, Card.CardType.Defend, "09");
+        Deck.AddCommonCards(1, "留守八楼", "我不用搬我留在八楼，清除当前场景", null, Card.CardType.Defend, "10");
+
+        Deck.AddCommonCards(1, "来画封面", "你！来画封面，选择一名玩家抓取其1张手牌", null, Card.CardType.Mission, "01");
+        Deck.AddCommonCards(1, "英语插图", "这季度的插图都交给你了，选择一名玩家抓取其2张手牌", null, Card.CardType.Mission, "02");
+        Deck.AddCommonCards(1, "新奇冒险", "准备好和艳迷一起冒险了吗？选择一名玩家抓取其1张专属牌", null, Card.CardType.Mission, "03");
+        Deck.AddCommonCards(1, "古典上色", "瑶琪绝对能教会你的放心，选择一名玩家抓取其2张手牌", null, Card.CardType.Mission, "04");
+        Deck.AddCommonCards(1, "分点草稿", "我让偌穗分点草稿给你，选择一名玩家抓取其1张手牌", null, Card.CardType.Mission, "05");
+        Deck.AddCommonCards(1, "画面审图", "日星看看图，抓取一名玩家1张手牌弃掉", null, Card.CardType.Mission, "06");
+        Deck.AddCommonCards(1, "不@不1", "我没艾特就不准1，抓取一名玩家1张手牌弃掉", null, Card.CardType.Mission, "07");
+        Deck.AddCommonCards(1, "你去交流", "你去和那个老师沟通吧，抓取一名玩家1张手牌并置与牌堆顶部", null, Card.CardType.Mission, "08");
+        Deck.AddCommonCards(1, "整理素材", "你今天不用画就只用整理素材，抽取其他玩家1张专属牌", null, Card.CardType.Mission, "09");
+        Deck.AddCommonCards(1, "调去AI", "你以后就属于AI部门了，清除当前场景", null, Card.CardType.Mission, "10");
+
+        Deck.AddCommonCards(1, "这周桌游", "进入游戏回合，在游戏回合内，所有的攻击牌等同于游戏牌", null, Card.CardType.Scene, "");
+        Deck.AddCommonCards(1, "铁咩吖咯", "进入次元回合，在次元回合内，所有的防御牌等同于次元牌", null, Card.CardType.Scene, "");
+        Deck.AddCommonCards(1, "正佳集合", "进入聚会回合，在聚会回合内，所有的任务牌等同于聚会牌", null, Card.CardType.Scene, "");
+
+        // MINE Cards
+        Deck.AddMINECards(1, "小肥", "当打出游戏牌时，抽取1张专属牌。", "被抓取手牌时，可打出1张专属牌。", "A");
+        Deck.AddMINECards(1, "子源", "当打出次元牌时，抽取1张专属牌。", "当手牌数量≥4时，可打出1张专属牌。", "B");
+        Deck.AddMINECards(1, "日星", "当打出聚会牌时，抽取1张专属牌。", "本回合无攻击时，可打出1张专属牌。", "C");
+
+        // Special Cards
+        Deck.AddSpecialCards(memberCount, "够了！", "本回合玩家只能出攻击牌", "其他玩家弃掉1张牌", "A");
+        Deck.AddSpecialCards(memberCount, "~~~~", "本回合玩家只能出防御牌", "额外放置1张防御牌", "B");
+        Deck.AddSpecialCards(memberCount, "笨女人 ", "本回合玩家只能出1张牌", "抽取2张通用牌", "C");
+
+        var idCard = Deck.GetRandomCard(Card.IdentityType.MINE);
+        _currentPlayer = new PlayerDeck(idCard, memberCount);
+    }
+
+    public void OnPickCard()
+    {
+        var card = Deck.GetRandomCard(0);
+
+        if (card != null)
+        {
+            DisplayOnBoard($"Card Info: {card.Identity} {card.Title} {card.Effect0} {card.Effect1}");
+        }
+    }
+
+    public void OnXIAOCard()
+    {
+        DisplayOnBoard("OnXIAOCard");
+    }
+
+    public void OnDiscard()
+    {
+        DisplayOnBoard("OnDiscard");
+    }
+
+    public void OnStart()
+    {
+        gameIsPlaying = true;
+
+        ShowUI(initUI);
+    }
+
+    public void OnMemberComfirm()
+    {
+        ShowUI(mainUI);
+
+        var count = int.Parse(memberText.text);
+
+        InitDeck(count);
+    }
+
+    public void OnPause(bool paused)
+    {
+
+    }
+
+    public void OnMemberChange(int nums)
+    {
+        var count = int.Parse(memberText.text);
+
+        count += nums;
+
+        count = Mathf.Min(Mathf.Max(3, count), 9);
+
+        memberText.text = $"{count}";
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        ShowUI(titleUI);
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        deckRemainText.text = $"Deck Remain:{Deck.GetDeckCount()}";
+        sceneStateText.text = $"Scene State:{_sceneState}";
+        mineRemainText.text = $"MINE Remain:{_currentPlayer.GetMINERemain()}";
+    }
+
+    private void DisplayOnBoard(string msg)
+    {
+        Debug.Log(msg);
+
+        var parent = scrollBoard.content;
+
+        Transform tmp = Instantiate(boardText, parent).transform;
+        tmp.localPosition = Vector3.zero;
+        tmp.localRotation = Quaternion.identity;
+        tmp.localScale = Vector3.one;
+
+        tmp.GetComponent<Text>().text = $"{msg}\n";
+
+        StartCoroutine(DelayScroll());
+    }
+
+    private IEnumerator DelayScroll()
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        scrollBoard.verticalNormalizedPosition = 0f;
+    }
+}
