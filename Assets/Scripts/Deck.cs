@@ -18,9 +18,13 @@ public class Deck
         {
             cardDesc = $"攻击牌{cardDesc}";
         }
-        else if (ct == Card.CardType.Scene)
+        else if (ct == Card.CardType.Defend)
         {
             cardDesc = $"防御牌{cardDesc}";
+        }
+        else if (ct == Card.CardType.Mission)
+        {
+            cardDesc = $"任务牌{cardDesc}";
         }
 
         AddCards(n, t, e, e1, Card.IdentityType.Common, ct, cardDesc: cardDesc);
@@ -83,6 +87,8 @@ public class Deck
         }
 
         var random = Random.Range(0, idCards.Count - 1);
+
+        //Debug.Log(random);
 
         var theCard = idCards[random];
 

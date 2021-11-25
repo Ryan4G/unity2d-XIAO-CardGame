@@ -8,14 +8,14 @@ public class XIAOCard : MonoBehaviour
 {
     public GameObject cardBack;
 
-    public bool cardHide = true;
-
     public TextMesh descText;
     public TextMesh titleText;
     public TextMesh effect01Text;
     public TextMesh effect02Text;
 
     private Card _currentCard = null;
+    private bool _cardHide = true;
+    private bool _cardSelected = false;
 
     public Card Card
     {
@@ -25,12 +25,37 @@ public class XIAOCard : MonoBehaviour
         }
     }
 
-    public event Action<Card> OnClick;
+    public bool CardHide
+    {
+        get
+        {
+            return _cardHide;
+        }
+
+        set
+        {
+            _cardHide = value;
+
+            cardBack.SetActive(!_cardHide);
+        }
+    }
+
+    public bool CardSelected
+    {
+        get
+        {
+            return _cardSelected;
+        }
+    }
+
+    public event Action<XIAOCard> OnClick;
+
+    private Vector3 _originPos;
 
     // Start is called before the first frame update
     void Start()
     {
-        cardBack.SetActive(cardHide);
+        cardBack.SetActive(_cardHide);
     }
 
     // Update is called once per frame
@@ -41,11 +66,16 @@ public class XIAOCard : MonoBehaviour
 
     public void OnMouseDown()
     {
-        cardBack.SetActive(false);
+        if (_cardHide)
+        {
+            _cardHide = false;
+
+            cardBack.SetActive(false);
+        }
 
         if (OnClick != null)
         {
-            OnClick.Invoke(_currentCard);
+            OnClick.Invoke(this);
         }
     }
 
@@ -57,11 +87,18 @@ public class XIAOCard : MonoBehaviour
         titleText.text = convertTextMesh(card.title);
         effect01Text.text = convertTextMesh(card.effect01);
         effect02Text.text = convertTextMesh(card.effect02);
+
+        _originPos = transform.position;
     }
 
     private string convertTextMesh(string msg)
     {
         int width = 8;
+
+        if (string.IsNullOrEmpty(msg))
+        {
+            return "";
+        }
 
         if (msg.Length <= 8)
         {
@@ -80,5 +117,30 @@ public class XIAOCard : MonoBehaviour
         }
 
         return string.Join("\n", shortMsgs);
+    }
+
+    public void Choose(bool state)
+    {
+        _cardSelected = state;
+
+        chooseCardEffect();
+    }
+
+    private void chooseCardEffect()
+    {
+        Vector3 pos = new Vector3(transform.position.x, transform.position.y, transform.position.z);
+
+        if (_cardSelected)
+        {
+            pos.y += 0.1f;
+            pos.z += -0.15f;
+        }
+        else
+        {
+            pos.y = _originPos.y;
+            pos.z = _originPos.z;
+        }
+
+        gameObject.transform.position = pos;
     }
 }

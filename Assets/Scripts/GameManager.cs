@@ -28,7 +28,6 @@ public class GameManager : Singleton<GameManager>
         private set;
     }
 
-
     public bool paused;
 
     private string _sceneState = "None";
@@ -42,7 +41,19 @@ public class GameManager : Singleton<GameManager>
 
     private GameObject[] _identityCards;
 
-    private bool _identityChoose = false;
+    private GameObject[] _identityPlayers;
+
+    private bool _chooseIdentityCard = false;
+
+    public GameObject playerPrefab;
+
+    private PlayerDeck _targetPlayer = null;
+
+    private int _actionPlayerIndex = 0;
+
+    private int _gameRound = 0;
+
+    private bool _currentPlayerRound = false;
 
     private void ShowUI(GameObject newUI)
     {
@@ -54,6 +65,14 @@ public class GameManager : Singleton<GameManager>
         }
 
         newUI.SetActive(true);
+    }
+
+    public PlayerDeck currentPlayer
+    {
+        get
+        {
+            return _currentPlayer;
+        }
     }
 
     public void InitDeck(int memberCount)
@@ -118,44 +137,90 @@ public class GameManager : Singleton<GameManager>
         }
 
         _identityCards = new GameObject[memberCount];
+        _identityPlayers = new GameObject[memberCount];
 
         PickIdentityCards();
     }
 
     public void OnPickCard()
     {
-        if (!_identityChoose)
+        if (!_chooseIdentityCard)
         {
+            DisplayOnBoard($"尚未选择身份，无法使用 <Pick>");
             return;
         }
 
-        var card = Deck.GetRandomCard(0);
-
-        if (card != null)
+        if (!_currentPlayerRound)
         {
-            DisplayOnBoard($"{_currentPlayer.Identity.title}抽取了一张卡牌");
-            DisplayOnBoard($"卡牌信息： {card.identity} {card.title} {card.effect01} {card.effect02}");
+            DisplayOnBoard($"当前并不是您的回合，无法使用 <Pick>");
+            return;
+        }
+
+        if (_currentPlayer != null)
+        {
+            _currentPlayer.PickCard(1);
         }
     }
 
     public void OnXIAOCard()
     {
-        if (!_identityChoose)
+
+        if (!_chooseIdentityCard)
         {
+            DisplayOnBoard($"尚未选择身份，无法使用 <XIAO>");
             return;
         }
 
-        DisplayOnBoard("OnXIAOCard");
+        if (!_currentPlayerRound)
+        {
+            DisplayOnBoard($"当前并不是您的回合，无法使用 <XIAO>");
+            return;
+        }
+
+        if (_currentPlayer != null)
+        {
+            _currentPlayer.XIAOCard(_targetPlayer);
+        }
     }
 
     public void OnDiscard()
     {
-        if (!_identityChoose)
+        if (!_chooseIdentityCard)
         {
+            DisplayOnBoard($"尚未选择身份，无法使用 <Discard>");
             return;
         }
 
-        DisplayOnBoard("OnDiscard");
+        if (!_currentPlayerRound)
+        {
+            DisplayOnBoard($"当前并不是您的回合，无法使用 <Discard>");
+            return;
+        }
+
+        if (_currentPlayer != null)
+        {
+            _currentPlayer.Discard();
+        }
+    }
+
+    public void OnSkipRound()
+    {
+        if (!_chooseIdentityCard)
+        {
+            DisplayOnBoard($"尚未选择身份，无法使用 <Skip>");
+            return;
+        }
+
+        if (!_currentPlayerRound)
+        {
+            DisplayOnBoard($"当前并不是您的回合，无法使用 <Skip>");
+            return;
+        }
+
+        if (_currentPlayer != null)
+        {
+            _currentPlayer.SkipRound();
+        }
     }
 
     public void OnStart()
@@ -202,7 +267,7 @@ public class GameManager : Singleton<GameManager>
         deckRemainText.text = $"Deck Remain:{Deck.GetDeckCount()}";
         sceneStateText.text = $"Scene State:{_sceneState}";
 
-        if (_identityChoose)
+        if (_chooseIdentityCard)
         {
             mineRemainText.text = $"MINE Remain:{_currentPlayer.GetMINERemain()}";
         }
@@ -212,7 +277,7 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    private void DisplayOnBoard(string msg)
+    public void DisplayOnBoard(string msg)
     {
         Debug.Log(msg);
 
@@ -242,40 +307,40 @@ public class GameManager : Singleton<GameManager>
         DisplayOnBoard("请玩家选择一张身份牌");
 
         var index = 0;
+        var cardWidth = 5f;
+        var startX = (globalDeck.Count - 1) / 2 * -1 * cardWidth;
 
         foreach(var playerDeck in globalDeck.Values)
         {
-            var v3 = cardPrefab.transform.position;
-            v3.x = index * 5 + -5;
+            var v3 = Vector3.zero;
+            v3.x += index * cardWidth + startX;
 
-            var go = Instantiate(cardPrefab, v3, cardPrefab.transform.rotation);
-            var xiaoCard = go.GetComponent<XIAOCard>();
-            xiaoCard.SetCard(playerDeck.Identity);
-            xiaoCard.OnClick += this.ChooseCard;
-
-            _identityCards[index] = go;
+            _identityCards[index] = CreateXIAOCard(playerDeck.Identity, v3, this.ChooseIdentityCard, new Vector3(2.5f, 2.5f, 1.0f)).gameObject;
 
             index++;
         }
     }
 
-    private void ChooseCard(Card card)
+    private void ChooseIdentityCard(XIAOCard xiaoCard)
     {
-        if (!_identityChoose)
+        if (!_chooseIdentityCard)
         {
             foreach (GameObject go in _identityCards)
             {
-                var xiaoCard = go.GetComponent<XIAOCard>();
+                var xCard = go.GetComponent<XIAOCard>();
 
-                if (xiaoCard.Card == card)
+                if (xiaoCard.Card == xCard.Card)
                 {
-                    _currentPlayer = globalDeck[card.cardTypeDesc];
-                    _identityChoose = true;
-                    break;
+                    _currentPlayer = globalDeck[xiaoCard.Card.cardTypeDesc];
+                    _chooseIdentityCard = true;
+                }
+                else
+                {
+                    go.SetActive(false);
                 }
             }
 
-            if (_identityChoose)
+            if (_chooseIdentityCard)
             {
                 StartCoroutine(DelayAction(3.0f, () => {
                     for (int i = _identityCards.Length - 1; i >= 0; i--)
@@ -285,7 +350,125 @@ public class GameManager : Singleton<GameManager>
                 }));
 
                 DisplayOnBoard($"您的身份是：{_currentPlayer.Identity.title}");
+
+                InitIdentityPlayers();
             }
         }
+    }
+
+    private void InitIdentityPlayers()
+    {
+        var index = 0;
+        var playerHeight = -1.25f;
+
+        var startPos = Camera.main.ViewportToWorldPoint(new Vector2(.1f, .7f));
+        startPos.z = 0;
+
+        foreach (var playerDeck in globalDeck.Values)
+        {
+            var v3 = startPos;
+            v3.y += index * playerHeight;
+
+            var go = Instantiate(playerPrefab, v3, cardPrefab.transform.rotation);
+            var xiaoPlayer = go.GetComponent<XIAOPlayer>();
+            xiaoPlayer.SetPlayer(playerDeck);
+            xiaoPlayer.OnClick += this.ChoosePlayer;
+
+            if (_currentPlayer == playerDeck)
+            {
+                xiaoPlayer.PlayerMine = true;
+                playerDeck.SetAIHandle(false);
+            }
+            else
+            {
+                playerDeck.SetAIHandle(true);
+            }
+
+            _identityPlayers[index] = go;
+
+            index++;
+        }
+
+        DisplayOnBoard($"玩家身份已初始化完毕");
+
+        DisplayOnBoard($"游戏开始...");
+
+        // Begin new round
+        NextRound();
+    }
+
+    private void ChoosePlayer(XIAOPlayer xiaoPlayer)
+    {
+        var player = xiaoPlayer.Player;
+
+        if (player != _targetPlayer)
+        {
+            DisplayOnBoard($"当前选中了身份为 {player.Identity.title} 的玩家");
+
+            _targetPlayer = player;
+
+            //foreach (GameObject go in _identityPlayers)
+            //{
+            //    var xiaoPlayer = go.GetComponent<XIAOPlayer>();
+
+            //    if (player != xiaoPlayer.Player)
+            //    {
+            //        xiaoPlayer.PlayerSelected = false;
+            //    }
+            //}
+        }
+    }
+
+    public void NextPlayer()
+    {
+        if (_actionPlayerIndex > _identityPlayers.Length - 1)
+        {
+            _actionPlayerIndex = 0;
+
+            NextRound();
+        }
+        else
+        {
+            var player = _identityPlayers[_actionPlayerIndex].GetComponent<XIAOPlayer>().Player;
+            player.RoundStarted();
+
+            _currentPlayerRound = player == _currentPlayer;
+
+            _actionPlayerIndex++;
+
+            if (player.AIHandle)
+            {
+                DisplayOnBoard($"{player.Identity.title} 为AI模式，于<5>秒后自动跳过出牌阶段...");
+
+                StartCoroutine(DelayAction(5.0f, () =>
+                {
+                    player.SkipRound();
+                }));
+            }
+        }
+    }
+
+    private void NextRound()
+    {
+        _gameRound++;
+
+        DisplayOnBoard($"当前回合： {_gameRound:D2} 回合");
+
+        // player start round
+        NextPlayer();
+    }
+
+    public XIAOCard CreateXIAOCard(Card card, Vector3 position, Action<XIAOCard> action, Vector3 scale, bool cardHide = true, bool visible = true)
+    {
+        var go = Instantiate(cardPrefab, position, cardPrefab.transform.rotation);
+        go.transform.localScale = scale;
+        go.SetActive(visible);
+
+        var xiaoCard = go.GetComponent<XIAOCard>();
+        xiaoCard.SetCard(card);
+        xiaoCard.CardHide = cardHide;
+        xiaoCard.OnClick += action;
+
+        return xiaoCard;
     }
 }

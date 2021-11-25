@@ -329,7 +329,7 @@ Transform:
   m_GameObject: {fileID: 4679950498130980709}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3, y: 3, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 4679950497330109714}
   - {fileID: 4679950497100793291}
@@ -399,7 +399,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cardBack: {fileID: 4679950497330109713}
-  cardHide: 1
   descText: {fileID: 4679950498531370754}
   titleText: {fileID: 4679950497334280263}
   effect01Text: {fileID: 4679950497798777753}
