@@ -14,8 +14,6 @@ public class PlayerDeck : MonoBehaviour
     private List<Card> _specialCards = null;
     private int _specialCardsRemain = 0;
 
-    private int _currentXIAOCards = 0;
-
     private bool _aiHandle = false;
 
     public bool AIHandle
@@ -33,15 +31,17 @@ public class PlayerDeck : MonoBehaviour
         get;
     }
 
-    public PlayerDeck(Card id, int playerCount)
-    {
-        Identity = id;
+    private RoundCardManager _roundCardManager = new RoundCardManager();
 
+    public void Init(Card id, int playerCount)
+    {
         _commonCards = new List<Card>();
 
         _specialCards = new List<Card>();
 
         _currentHandCards = new List<XIAOCard>();
+
+        Identity = id;
 
         _specialCardsRemain = playerCount;
     }
@@ -66,6 +66,10 @@ public class PlayerDeck : MonoBehaviour
 
                 _currentHandCards.Add(go);
             }
+            else
+            {
+                GameManager.Instance.DisplayOnBoard($"通用牌堆已无更多可用卡牌回收...");
+            }
 
             num--;
         }
@@ -73,11 +77,11 @@ public class PlayerDeck : MonoBehaviour
         RefreshHandCards();
     }
 
-    public void XIAOCard(XIAOPlayer xiaoPlayer)
+    public void XIAOCard(PlayerDeck player)
     {
         var selectedCard = _currentHandCards.Where(t => t.CardSelected).ToList();
 
-        if (selectedCard.Count > 0)
+        if (selectedCard.Count > 1)
         {
             GameManager.Instance.DisplayOnBoard($"不能同时使用两张卡牌");
             return;
@@ -93,23 +97,52 @@ public class PlayerDeck : MonoBehaviour
 
         var card = xiaoCard.Card;
 
+        if (!_roundCardManager.XIAOLimit(card))
+        {
+            return;
+        }
+
         if (card.identity == Card.IdentityType.Common)
         {
             if (card.cardType == Card.CardType.Attack)
             {
+                if (player == null)
+                {
+                    GameManager.Instance.DisplayOnBoard($"请先选择攻击牌的攻击对象");
+                    return;
+                }
 
+                if (player.Identity.cardTypeDesc == Identity.cardTypeDesc)
+                {
+                    GameManager.Instance.DisplayOnBoard($"攻击牌的攻击对象不能是出牌者");
+                    return;
+                }
+
+                // attack card also will be game card
+                if (GameManager.Instance.CurrentScene == Card.SceneType.Game)
+                {
+                    GameManager.Instance.DisplayOnBoard($"当前场景<游戏>，攻击牌同时被视为游戏牌");
+                }
             }
             else if (card.cardType == Card.CardType.Defend)
             {
-
+                // defend card also will be dimension card
+                if (GameManager.Instance.CurrentScene == Card.SceneType.Dimension)
+                {
+                    GameManager.Instance.DisplayOnBoard($"当前场景<次元>，攻击牌同时被视为次元牌");
+                }
             }
             else if (card.cardType == Card.CardType.Mission)
             {
-
+                // mission card also will be party card
+                if (GameManager.Instance.CurrentScene == Card.SceneType.Party)
+                {
+                    GameManager.Instance.DisplayOnBoard($"当前场景<聚会>，攻击牌同时被视为聚会牌");
+                }
             }
             else if (card.cardType == Card.CardType.Scene)
             {
-
+                GameManager.Instance.ChangeScene(card.GetSceneType());
             }
 
             _commonCards.Remove(card);
@@ -120,10 +153,14 @@ public class PlayerDeck : MonoBehaviour
             _specialCards.Remove(card);
         }
 
-        GameManager.Instance.DisplayOnBoard($"{Identity.title} 使用了一张卡牌");
-        GameManager.Instance.DisplayOnBoard($"卡牌信息：{card.identity} {card.title} {card.effect01} {card.effect02}");
+        // add card use count
+        _roundCardManager.XIAOCard(card);
 
-        _currentXIAOCards++;
+        // mark the card used
+        card.used = true;
+
+        GameManager.Instance.DisplayOnBoard($"{Identity.title} {(player != null ? $"对{player.Identity.title}": "")}使用了一张卡牌");
+        GameManager.Instance.DisplayOnBoard($"卡牌信息：{card.identity} {card.title} {card.effect01} {card.effect02}");
 
         _currentHandCards.Remove(xiaoCard);
 
@@ -143,6 +180,9 @@ public class PlayerDeck : MonoBehaviour
             for(var i = 0; i < selectedCard.Count; i++)
             {
                 var card = selectedCard[i];
+
+                // mark the card used
+                card.Card.used = true;
 
                 if (card.Card.identity == Card.IdentityType.Common)
                 {
@@ -169,18 +209,18 @@ public class PlayerDeck : MonoBehaviour
 
     public void RoundStarted()
     {
-        _currentXIAOCards = 0;
-
         GameManager.Instance.DisplayOnBoard($"{Identity.title} 的回合开始...");
 
         GameManager.Instance.DisplayOnBoard($"从普通牌堆自动获取两张卡牌...");
 
         PickCard(2);
+
+        _roundCardManager.Reset();
     }
 
     public void SkipRound()
     {
-        if (_currentXIAOCards == 0)
+        if (_roundCardManager.XIAOCardCount == 0)
         {
             GameManager.Instance.DisplayOnBoard($"{Identity.title} 本回合未出牌...");
 
@@ -219,7 +259,7 @@ public class PlayerDeck : MonoBehaviour
         var cardWidth = 2.2f;
         var startX = (_currentHandCards.Count - 1) / 2 * -1 * cardWidth;
 
-        var visible = GameManager.Instance.currentPlayer == this;
+        var visible = GameManager.Instance.currentPlayer.Identity.cardTypeDesc == Identity.cardTypeDesc;
 
         if (visible)
         {
@@ -236,8 +276,29 @@ public class PlayerDeck : MonoBehaviour
         }
     }
 
-    public void PlayerSelected(XIAOPlayer xiaoPlayer)
+    public void Reaction(Card card)
     {
+        if (card.identity == Card.IdentityType.Common)
+        {
+            if (card.cardType == Card.CardType.Attack)
+            {
+                
+            }
+            else if (card.cardType == Card.CardType.Defend)
+            {
 
+            }
+            else if (card.cardType == Card.CardType.Mission)
+            {
+
+            }
+            else if (card.cardType == Card.CardType.Scene)
+            {
+
+            }
+        }
+        else
+        {
+        }
     }
 }

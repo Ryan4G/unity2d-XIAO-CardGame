@@ -8,6 +8,8 @@ public class Deck
 {
     private static List<Card> _cardDeck = new List<Card>();
 
+    private static int _recycleCount = 0;
+
     public static void AddCommonCards(int n, string t, string e, string e1 = null, Card.CardType ct = Card.CardType.Attack, string cardDesc = "")
     {
         if (ct == Card.CardType.Scene)
@@ -51,7 +53,9 @@ public class Deck
                 cardTypeDesc = cardDesc,
                 title = t,
                 effect01 = e,
-                effect02 = e1
+                effect02 = e1,
+                used = false,
+                dealed = false
             });
         }
     }
@@ -60,11 +64,11 @@ public class Deck
     {
         if (ct != Card.CardType.None)
         {
-            return _cardDeck.Where(t => t.identity == id && t.cardType == ct).Count();
+            return _cardDeck.Where(t => t.identity == id && t.cardType == ct && !t.used && !t.dealed).Count();
         }
         else
         {
-            return _cardDeck.Where(t => t.identity == id).Count();
+            return _cardDeck.Where(t => t.identity == id && !t.used && !t.dealed).Count();
         }
     }
 
@@ -74,15 +78,34 @@ public class Deck
         
         if (ct != Card.CardType.None)
         {
-            idCards = _cardDeck.Where(t => t.identity == id && t.cardType == ct).ToList();
+            idCards = _cardDeck.Where(t => t.identity == id && t.cardType == ct && !t.used && !t.dealed).ToList();
         }
         else
         {
-            idCards = _cardDeck.Where(t => t.identity == id).ToList();
+            idCards = _cardDeck.Where(t => t.identity == id && !t.used && !t.dealed).ToList();
         }
 
         if (idCards.Count < 1)
         {
+            var msg = "";
+
+            if (id == Card.IdentityType.Common)
+            {
+                msg = "通用牌堆";
+            }
+            else if (id == Card.IdentityType.Special)
+            {
+                msg = "专属牌堆";
+            }
+
+            GameManager.Instance.DisplayOnBoard($"{msg}已无可用卡牌，将重新回收卡牌...");
+
+            // 3 times recycle
+            if (DeckRecycle(id))
+            {
+                return GetRandomCard(id, ct);
+            }
+
             return null;
         }
 
@@ -94,7 +117,7 @@ public class Deck
 
         if (theCard != null)
         {
-            _cardDeck.Remove(theCard);
+            theCard.dealed = true;
         }
 
         return theCard;
@@ -103,5 +126,26 @@ public class Deck
     public static void EmptyDeck()
     {
         _cardDeck.Clear();
+    }
+
+    public static bool DeckRecycle(Card.IdentityType id = Card.IdentityType.Common)
+    {
+        var cards = _cardDeck.Where(t => t.identity == id && t.used && t.dealed).ToList();
+
+        foreach(var card in cards)
+        {
+            card.used = false;
+            card.dealed = false;
+        }
+
+        _recycleCount++;
+
+        if (_recycleCount > 2)
+        {
+            _recycleCount = 0;
+            return false;
+        }
+
+        return true;
     }
 }

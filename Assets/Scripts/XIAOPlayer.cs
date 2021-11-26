@@ -71,10 +71,7 @@ public class XIAOPlayer : MonoBehaviour
 
     public void OnMouseDown()
     {
-        if (!PlayerSelected)
-        {
-            PlayerSelected = true;
-        }
+        PlayerSelected = !PlayerSelected;
 
         if (OnClick != null)
         {

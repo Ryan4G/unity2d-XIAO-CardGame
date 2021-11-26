@@ -30,9 +30,6 @@ public class GameManager : Singleton<GameManager>
 
     public bool paused;
 
-    private string _sceneState = "None";
-
-    private Dictionary<string, PlayerDeck> globalDeck = new Dictionary<string, PlayerDeck>();
     // UI
 
     private PlayerDeck _currentPlayer = null;
@@ -54,6 +51,20 @@ public class GameManager : Singleton<GameManager>
     private int _gameRound = 0;
 
     private bool _currentPlayerRound = false;
+
+    private Card.SceneType _currentScene = Card.SceneType.None;
+
+    public Card.SceneType CurrentScene
+    {
+        get
+        {
+            return _currentScene;
+        }
+    }
+
+    private int _memberNumber = 0;
+
+    private XIAOPlayer[] _xiaoPlayers = null;
 
     private void ShowUI(GameObject newUI)
     {
@@ -77,7 +88,7 @@ public class GameManager : Singleton<GameManager>
 
     public void InitDeck(int memberCount)
     {
-        globalDeck.Clear();
+        _memberNumber = memberCount;
 
         Deck.EmptyDeck();
 
@@ -129,17 +140,27 @@ public class GameManager : Singleton<GameManager>
         Deck.AddSpecialCards(memberCount, "~~~~", "本回合玩家只能出防御牌", "额外放置1张防御牌", "B");
         Deck.AddSpecialCards(memberCount, "笨女人 ", "本回合玩家只能出1张牌", "抽取2张通用牌", "C");
 
+        var idCards = new List<Card>();
+
         // init global deck
-        for(var i = 0; i < memberCount; i++)
+        for(var i = 0; i < _memberNumber; i++)
         {
             var idCard = Deck.GetRandomCard(Card.IdentityType.MINE);
-            globalDeck.Add(idCard.cardTypeDesc, new PlayerDeck(idCard, memberCount));
+
+            if (idCard == null)
+            {
+                DisplayOnBoard($"专属卡牌数量不足，无法开始游戏...");
+                return;
+            }
+
+            idCards.Add(idCard);
         }
 
-        _identityCards = new GameObject[memberCount];
-        _identityPlayers = new GameObject[memberCount];
+        _identityCards = new GameObject[_memberNumber];
+        _identityPlayers = new GameObject[_memberNumber];
+        _xiaoPlayers = new XIAOPlayer[_memberNumber];
 
-        PickIdentityCards();
+        PickIdentityCards(idCards);
     }
 
     public void OnPickCard()
@@ -265,7 +286,7 @@ public class GameManager : Singleton<GameManager>
     void Update()
     {
         deckRemainText.text = $"Deck Remain:{Deck.GetDeckCount()}";
-        sceneStateText.text = $"Scene State:{_sceneState}";
+        sceneStateText.text = $"Scene State:{_currentScene}";
 
         if (_chooseIdentityCard)
         {
@@ -302,20 +323,20 @@ public class GameManager : Singleton<GameManager>
         action.Invoke();
     }
 
-    private void PickIdentityCards()
+    private void PickIdentityCards(List<Card> cards)
     {
         DisplayOnBoard("请玩家选择一张身份牌");
 
         var index = 0;
         var cardWidth = 5f;
-        var startX = (globalDeck.Count - 1) / 2 * -1 * cardWidth;
+        var startX = (cards.Count - 1) / 2 * -1 * cardWidth;
 
-        foreach(var playerDeck in globalDeck.Values)
+        foreach(var card in cards)
         {
             var v3 = Vector3.zero;
             v3.x += index * cardWidth + startX;
 
-            _identityCards[index] = CreateXIAOCard(playerDeck.Identity, v3, this.ChooseIdentityCard, new Vector3(2.5f, 2.5f, 1.0f)).gameObject;
+            _identityCards[index] = CreateXIAOCard(card, v3, this.ChooseIdentityCard, new Vector3(2.5f, 2.5f, 1.0f)).gameObject;
 
             index++;
         }
@@ -325,13 +346,15 @@ public class GameManager : Singleton<GameManager>
     {
         if (!_chooseIdentityCard)
         {
+            Card chooseCard = null;
+
             foreach (GameObject go in _identityCards)
             {
                 var xCard = go.GetComponent<XIAOCard>();
 
-                if (xiaoCard.Card == xCard.Card)
+                if (xiaoCard.Card.cardTypeDesc == xCard.Card.cardTypeDesc)
                 {
-                    _currentPlayer = globalDeck[xiaoCard.Card.cardTypeDesc];
+                    chooseCard = xCard.Card;
                     _chooseIdentityCard = true;
                 }
                 else
@@ -345,37 +368,44 @@ public class GameManager : Singleton<GameManager>
                 StartCoroutine(DelayAction(3.0f, () => {
                     for (int i = _identityCards.Length - 1; i >= 0; i--)
                     {
-                        Destroy(_identityCards[i]);
+                        _identityCards[i].SetActive(false);
                     }
                 }));
 
-                DisplayOnBoard($"您的身份是：{_currentPlayer.Identity.title}");
+                DisplayOnBoard($"您的身份是：{chooseCard.title}");
 
-                InitIdentityPlayers();
+                InitIdentityPlayers(chooseCard);
             }
         }
     }
 
-    private void InitIdentityPlayers()
+    private void InitIdentityPlayers(Card card)
     {
-        var index = 0;
         var playerHeight = -1.25f;
 
         var startPos = Camera.main.ViewportToWorldPoint(new Vector2(.1f, .7f));
         startPos.z = 0;
 
-        foreach (var playerDeck in globalDeck.Values)
+        for (var i = 0; i < _memberNumber; i++)
         {
             var v3 = startPos;
-            v3.y += index * playerHeight;
+            v3.y += i * playerHeight;
+
+            var card_go = _identityCards[i];
+            var xiaoCard = card_go.GetComponent<XIAOCard>();
 
             var go = Instantiate(playerPrefab, v3, cardPrefab.transform.rotation);
+
+            var playerDeck = go.GetComponent<PlayerDeck>();
+            playerDeck.Init(xiaoCard.Card, _memberNumber);
+
             var xiaoPlayer = go.GetComponent<XIAOPlayer>();
             xiaoPlayer.SetPlayer(playerDeck);
             xiaoPlayer.OnClick += this.ChoosePlayer;
 
-            if (_currentPlayer == playerDeck)
+            if (xiaoCard.Card.cardTypeDesc == card.cardTypeDesc)
             {
+                _currentPlayer = playerDeck;
                 xiaoPlayer.PlayerMine = true;
                 playerDeck.SetAIHandle(false);
             }
@@ -384,14 +414,20 @@ public class GameManager : Singleton<GameManager>
                 playerDeck.SetAIHandle(true);
             }
 
-            _identityPlayers[index] = go;
-
-            index++;
+            _identityPlayers[i] = go;
+            _xiaoPlayers[i] = xiaoPlayer;
         }
 
         DisplayOnBoard($"玩家身份已初始化完毕");
 
         DisplayOnBoard($"游戏开始...");
+
+        StartCoroutine(DelayAction(1.0f, () => {
+            for (int i = _identityCards.Length - 1; i >= 0; i--)
+            {
+                Destroy(_identityCards[i]);
+            }
+        }));
 
         // Begin new round
         NextRound();
@@ -406,16 +442,6 @@ public class GameManager : Singleton<GameManager>
             DisplayOnBoard($"当前选中了身份为 {player.Identity.title} 的玩家");
 
             _targetPlayer = player;
-
-            //foreach (GameObject go in _identityPlayers)
-            //{
-            //    var xiaoPlayer = go.GetComponent<XIAOPlayer>();
-
-            //    if (player != xiaoPlayer.Player)
-            //    {
-            //        xiaoPlayer.PlayerSelected = false;
-            //    }
-            //}
         }
     }
 
@@ -432,7 +458,7 @@ public class GameManager : Singleton<GameManager>
             var player = _identityPlayers[_actionPlayerIndex].GetComponent<XIAOPlayer>().Player;
             player.RoundStarted();
 
-            _currentPlayerRound = player == _currentPlayer;
+            _currentPlayerRound = player.Identity.cardTypeDesc == _currentPlayer.Identity.cardTypeDesc;
 
             _actionPlayerIndex++;
 
@@ -446,6 +472,20 @@ public class GameManager : Singleton<GameManager>
                 }));
             }
         }
+
+        // clear selected player
+        if (_currentPlayerRound)
+        {
+            foreach(var go in _identityPlayers)
+            {
+                var xiaoPlayer = go.GetComponent<XIAOPlayer>();
+
+                xiaoPlayer.PlayerSelected = false;
+            }
+
+            _targetPlayer = null;
+        }
+
     }
 
     private void NextRound()
@@ -470,5 +510,10 @@ public class GameManager : Singleton<GameManager>
         xiaoCard.OnClick += action;
 
         return xiaoCard;
+    }
+
+    public void ChangeScene(Card.SceneType scene)
+    {
+        _currentScene = scene;
     }
 }
