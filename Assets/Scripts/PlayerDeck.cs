@@ -62,7 +62,7 @@ public class PlayerDeck : MonoBehaviour
 
                 _commonCards.Add(card);
 
-                var go = GameManager.Instance.CreateXIAOCard(card, startPos, CardSelected, new Vector3(1.5f, 1.5f, 1.0f), false, false);
+                var go = GameManager.Instance.CreateXIAOCard(card, startPos, CardSelected, new Vector3(1.4f, 1.4f, 1.0f), false, false);
 
                 _currentHandCards.Add(go);
             }
@@ -164,7 +164,7 @@ public class PlayerDeck : MonoBehaviour
 
         _currentHandCards.Remove(xiaoCard);
 
-        Destroy(xiaoCard.gameObject);
+        ShowCardAndDestory(xiaoCard);
 
         RefreshHandCards();
     }
@@ -195,7 +195,7 @@ public class PlayerDeck : MonoBehaviour
 
                 _currentHandCards.Remove(card);
 
-                Destroy(card.gameObject);
+                ShowCardAndDestory(card);
             }
 
             RefreshHandCards();
@@ -256,8 +256,14 @@ public class PlayerDeck : MonoBehaviour
         var startPos = Camera.main.ViewportToWorldPoint(new Vector2(.5f, .2f));
         startPos.z = 0;
 
-        var cardWidth = 2.2f;
+        var cardWidth = 1.1f;
         var startX = (_currentHandCards.Count - 1) / 2 * -1 * cardWidth;
+        var startZ = (_currentHandCards.Count + 1) * 0.1f;
+
+        if (_currentHandCards.Count % 2 == 0)
+        {
+            startX -= cardWidth * 0.5f;
+        }
 
         var visible = GameManager.Instance.currentPlayer.Identity.cardTypeDesc == Identity.cardTypeDesc;
 
@@ -269,7 +275,14 @@ public class PlayerDeck : MonoBehaviour
 
                 var v3 = startPos;
                 v3.x += i * cardWidth + startX;
+                v3.z += i * -0.1f + startZ;
 
+                if (go.CardSelected)
+                {
+                    go.Choose(false);
+                }
+
+                go.SetOriginPos(v3);
                 go.transform.position = v3;
                 go.gameObject.SetActive(visible);
             }
@@ -300,5 +313,22 @@ public class PlayerDeck : MonoBehaviour
         else
         {
         }
+    }
+
+    private void ShowCardAndDestory(XIAOCard xiaoCard)
+    {
+        xiaoCard.OnClick -= this.CardSelected;
+        xiaoCard.transform.position = new Vector3(Vector3.zero.x, Vector3.zero.y, xiaoCard.transform.position.z);
+
+        StartCoroutine(DelayAction(1.0f, () => {
+            Destroy(xiaoCard.gameObject);
+        }));
+    }
+
+    private IEnumerator DelayAction(float delay, Action action)
+    {
+        yield return new WaitForSeconds(delay);
+
+        action.Invoke();
     }
 }

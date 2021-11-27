@@ -143,4 +143,9 @@ public class XIAOCard : MonoBehaviour
 
         gameObject.transform.position = pos;
     }
+
+    public void SetOriginPos(Vector3 pos)
+    {
+        _originPos = pos;
+    }
 }

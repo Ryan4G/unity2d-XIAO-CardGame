@@ -328,15 +328,20 @@ public class GameManager : Singleton<GameManager>
         DisplayOnBoard("请玩家选择一张身份牌");
 
         var index = 0;
-        var cardWidth = 5f;
+        var cardWidth = 3.0f;
         var startX = (cards.Count - 1) / 2 * -1 * cardWidth;
+
+        if (cards.Count % 2 == 0)
+        {
+            startX -= cardWidth * 0.5f;
+        }
 
         foreach(var card in cards)
         {
             var v3 = Vector3.zero;
             v3.x += index * cardWidth + startX;
 
-            _identityCards[index] = CreateXIAOCard(card, v3, this.ChooseIdentityCard, new Vector3(2.5f, 2.5f, 1.0f)).gameObject;
+            _identityCards[index] = CreateXIAOCard(card, v3, this.ChooseIdentityCard, new Vector3(1.8f, 1.8f, 1.0f)).gameObject;
 
             index++;
         }
