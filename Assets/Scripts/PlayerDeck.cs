@@ -33,6 +33,31 @@ public class PlayerDeck : MonoBehaviour
 
     private RoundCardManager _roundCardManager = new RoundCardManager();
 
+    private Dictionary<Card.ActionType, int> _reactionState = new Dictionary<Card.ActionType, int>();
+
+    private bool _reactionCompleted = true;
+
+    private DateTime _reactionStartTime;
+
+    public bool ReactionCompleted
+    {
+        get
+        {
+            return _reactionCompleted;
+        }
+    }
+
+    private void Update()
+    {
+        if (!_reactionCompleted)
+        {
+            if ((DateTime.Now - _reactionStartTime).TotalSeconds > 15 || _reactionState.Count == 0)
+            {
+                _reactionCompleted = true;
+            }
+        }
+    }
+
     public void Init(Card id, int playerCount)
     {
         _commonCards = new List<Card>();
@@ -175,6 +200,32 @@ public class PlayerDeck : MonoBehaviour
 
         if (selectedCard.Count > 0)
         {
+            var needDiscard = 0;
+
+            foreach(var kv in _reactionState)
+            {
+                if (kv.Key == Card.ActionType.Discard)
+                {
+                    needDiscard += kv.Value;
+                }
+            }
+
+            if (needDiscard == 0)
+            {
+                GameManager.Instance.DisplayOnBoard($"未受到攻击，无法直接丢弃卡牌");
+            }
+
+            if (needDiscard > selectedCard.Count)
+            {
+                GameManager.Instance.DisplayOnBoard($"此次需丢弃{needDiscard}张卡牌，还差{needDiscard - selectedCard.Count}张...");
+                return;
+            }
+            else if (needDiscard < selectedCard.Count)
+            {
+                GameManager.Instance.DisplayOnBoard($"此次需丢弃{needDiscard}张卡牌，多选了{selectedCard.Count - needDiscard}张...");
+                return;
+            }
+
             GameManager.Instance.DisplayOnBoard($"丢弃了{selectedCard.Count}张卡牌...");
 
             for(var i = 0; i < selectedCard.Count; i++)
@@ -291,27 +342,15 @@ public class PlayerDeck : MonoBehaviour
 
     public void Reaction(Card card)
     {
-        if (card.identity == Card.IdentityType.Common)
+        _reactionCompleted = false;
+        _reactionStartTime = DateTime.Now;
+
+        foreach(var kv in card.GetActions())
         {
-            if (card.cardType == Card.CardType.Attack)
+            if (kv.Value > 0)
             {
-                
+                _reactionState.Add(kv.Key, kv.Value);
             }
-            else if (card.cardType == Card.CardType.Defend)
-            {
-
-            }
-            else if (card.cardType == Card.CardType.Mission)
-            {
-
-            }
-            else if (card.cardType == Card.CardType.Scene)
-            {
-
-            }
-        }
-        else
-        {
         }
     }
 
